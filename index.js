@@ -18,45 +18,63 @@ const { token } = getEnvData(process, "../config.json");
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
-
-const getGameList = (games) => {
-    let gameList = `**DGC Community Game Wishlist**\n`;
-    for (let [index, game] of games.entries()) {
-      gameList += `${index + 1}. ${game}\n`;
-    }
-    return gameList;
-  };
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(bodyParser.json());
+const listOfGamesHandler = (games) => {
+  let gameList = `**DGC Community Game Wishlist**\n`;
+  for (let [index, game] of games.entries()) {
+    gameList += `${index + 1}. ${game}\n`;
+  }
+  return gameList;
+};
 
+const getListOfGames = async (returnList = false) => {
+  const wishList = db.collection("wishlist").doc("games");
+  const gamesCollection = await wishList.get();
+  const list = gamesCollection.data().list.sort();
+  if (returnList) {
+    return list?.length > 0
+      ? listOfGamesHandler(list)
+      : "There are currently no games in the community game list";
+  } else {
+    return { wishList, list };
+  }
+};
+
+app.use(bodyParser.json());
 app.listen(PORT, () => {
   console.log(`Our app is running on port ${PORT}`);
 });
 
 app.post("/wishlist-add", async (req, res) => {
-  const wishList = db.collection("wishlist").doc("games");
-  const gamesCollection = await wishList.get();
-  const list = gamesCollection.data().list;
+  const { wishList, list } = await getListOfGames();
   const game = await req.body.game;
   list.push(game);
   list.sort();
   wishList.set({ list: list });
-  const gameList = getGameList(list);
+  const gameList = listOfGamesHandler(list);
   res.send(`The DGC Community Game Wishlist has been updated:\n\n${gameList}`);
 });
 
+app.post("/wishlist-remove", async (req, res) => {
+  const { wishList, list } = await getListOfGames();
+  const game = await req.body.game;
+  const updatedList = list.filter((currentGame) => currentGame !== game);
+  updatedList.sort();
+  wishList.set({ list: updatedList });
+  const gameList = listOfGamesHandler(updatedList);
+  res.send(`The DGC Community Game Wishlist has been updated:\n\n${gameList}`);
+});
+
+app.get("/wishlist", async (req, res) => {
+  const { list } = await getListOfGames();
+  res.send(list);
+});
+
 app.get("/wishlist-current", async (req, res) => {
-  const wishList = db.collection("wishlist").doc("games");
-  const gamesCollection = await wishList.get();
-  const list = gamesCollection.data().list.sort();
-  const gameList =
-    list?.length > 0
-      ? getGameList(list)
-      : "There are currently no games in the community game list";
-  res.send(gameList);
+  const list = await getListOfGames((returnList = true));
+  res.send(list);
 });
 
 const commandsPath = path.join(__dirname, "commands");
@@ -67,6 +85,7 @@ const commandFiles = fs
 for (const file of commandFiles) {
   const filePath = path.join(commandsPath, file);
   const command = require(filePath);
+  // Set a new item in the Collection with the key as the command name and the value as the exported module
   if ("data" in command && "execute" in command) {
     client.commands.set(command.data.name, command);
   } else {
@@ -76,7 +95,37 @@ for (const file of commandFiles) {
   }
 }
 
-client.on(Events.InteractionCreate, async (interaction) => {
+client.on("guildMemberAdd", (member) => {
+  const numberOfBarks = (upperBound) =>
+    Math.floor(Math.floor(Math.random() * 20));
+  const getBarks = () => {
+    let barks = "";
+    let numOfBarks = numberOfBarks;
+    if (numOfBarks < 1) {
+      numOfBarks = 1;
+    } else if (numOfBarks > 20) {
+      numOfBarks = 20;
+    }
+    for (let i = 1; i <= numOfBarks; i++) {
+      if (i < 6) {
+        barks += "bark ";
+      } else if (i < 11) {
+        barks += "**bark** ";
+      } else if (i < 16) {
+        barks += "BARK ";
+      } else {
+        barks += "**BARK** ";
+      }
+    }
+    return barks;
+  };
+  member.guild.channels.cache
+    .get("801079900437348394")
+    .send({ content: getBarks() });
+});
+
+client.on(Events.InteractionCreate, async (interaction, client) => {
+  //client.channels.get("846741291701764116").send("hello");
   if (!interaction.isChatInputCommand() && !interaction.isAutocomplete()) {
     return;
   } else if (interaction.isAutocomplete()) {

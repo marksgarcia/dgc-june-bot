@@ -266,11 +266,3 @@ module.exports = {
     await interaction.reply({ content: `${url}`, ephemeral: true });
   },
 };
-
-// https://dgc-achievement-creator.web.app/?
-//icon=apple-whole
-//brand=nintendo
-//header=Hello%20World
-//description=foo%20bar
-//trophy=gold
-//points=20

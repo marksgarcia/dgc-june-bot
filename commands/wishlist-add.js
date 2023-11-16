@@ -29,7 +29,7 @@ module.exports = {
         const wishList = response.data
         return wishList;
     };
-    const wishList = await getWishList()
+    await getWishList()
 
     await interaction.reply({content: `You have successfully added ${game} to the wishlist!`, ephemeral: true});
   },
