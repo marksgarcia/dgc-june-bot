@@ -5,7 +5,8 @@ const BOTS = [
   "Emoji Statistics",
   "EpicFreeGames",
   "june bot",
-  "Subo the Survey Bot"
+  "Subo the Survey Bot",
+  "Secret Santa"
 ];
 
 exports.BOTS = BOTS;
